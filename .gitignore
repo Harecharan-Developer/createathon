@@ -1,0 +1,17 @@
+# Ignore Node.js dependencies
+createathon-frontend/node_modules/
+createathon-frontend/public/
+
+
+
+
+
+# Ignore editor-specific files
+.vscode/
+.idea/
+.DS_Store
+
+
+telegram-bot/
+backend/
+
