@@ -8,16 +8,17 @@ export default function Navbar({ isLoggedIn, setIsLoggedIn }) {
           <Link to="/" className="hover:text-gray-300">Home</Link>
           <Link to="/problem/1" className="hover:text-gray-300">Problems</Link>
         </div>
-        
+
         {isLoggedIn ? (
           <div className="flex space-x-4">
             <Link to="/profile" className="hover:text-gray-300">Profile</Link>
-            <button onClick={() => setIsLoggedIn(false)} className="hover:text-gray-300">
-              Logout
-            </button>
+            <button onClick={() => setIsLoggedIn(false)} className="hover:text-gray-300">Logout</button>
           </div>
         ) : (
-          <Link to="/login" className="hover:text-gray-300">Login</Link>
+          <div className="flex space-x-4">
+            <Link to="/login" className="hover:text-gray-300">Login</Link>
+            <Link to="/signup" className="hover:text-gray-300">Sign Up</Link>
+          </div>
         )}
       </div>
     </nav>
