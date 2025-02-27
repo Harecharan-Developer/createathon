@@ -12,6 +12,7 @@
     "tailwind:watch": "tailwindcss -i ./src/index.css -o ./dist/output.css --watch"
   },
   "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
     "@supabase/supabase-js": "^2.49.1",
     "@uiw/react-textarea-code-editor": "^3.1.0",
     "axios": "^1.8.1",

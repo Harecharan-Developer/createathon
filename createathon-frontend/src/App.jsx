@@ -1,23 +1,29 @@
-import { useState } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import Navbar from './components/Navbar'
+// createathon-frontend/src/App.jsx
+import { Routes, Route } from 'react-router-dom'
+import { AuthProvider } from './context/AuthContext'
 import Home from './pages/Home'
 import Login from './pages/Login'
+import Signup from './pages/Signup'
+import Dashboard from './pages/Dashboard'
+import Navbar from './components/Navbar'
+import RequireAuth from './components/RequireAuth'
 import Coding from './pages/Coding'
 import Profile from './pages/Profile'
 
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-
   return (
-    <BrowserRouter>
-      <Navbar isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />
+    <AuthProvider>
+      <Navbar />
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login setIsLoggedIn={setIsLoggedIn} />} />
-        <Route path="/problem/:id" element={<Coding />} />
-        <Route path="/profile" element={isLoggedIn ? <Profile /> : <Navigate to="/login" />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route element={<RequireAuth />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/coding" element={<Coding />} />
+          <Route path="/profile" element={<Profile />} />
+        </Route>
       </Routes>
-    </BrowserRouter>
+    </AuthProvider>
   )
 }
