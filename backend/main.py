@@ -8,10 +8,22 @@ from supabase import create_client, Client
 from typing import Optional, List
 import os
 import dotenv
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
 
 # Load environment variables
 dotenv.load_dotenv()
 
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # Initialize Supabase client
@@ -19,7 +31,6 @@ url = os.environ.get("SUPABASE_URL")
 key = os.environ.get("SUPABASE_ANON_KEY")
 supabase: Client = create_client(url, key)
 
-app = FastAPI()
 
 # Authentication scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -47,9 +58,15 @@ class ChallengeCreate(BaseModel):
     points: int
     category_id: str
 
-class ChallengeOut(ChallengeCreate):
+class ChallengeOut(BaseModel):
     id: str
+    title: str
+    description: str
+    difficulty: DifficultyEnum
+    points: int
+    category_id: str
     created_at: datetime
+    category: Dict  # New field for category data
 
 class Submission(BaseModel):
     code: str
@@ -78,76 +95,81 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-
-# Routes
-@app.post("/challenges/", response_model=ChallengeOut)
-async def create_challenge(
-    challenge: ChallengeCreate,
-    current_user: User = Depends(get_current_user)
-):
-    """Create new challenge (Admin only)"""
-    new_challenge = {
-        **challenge.dict(),
-        "created_at": datetime.utcnow().isoformat()
-    }
-    try:
-        result = supabase.table("challenges").insert(new_challenge).execute()
-        return result.data[0]
-    except Exception as e:
-        raise HTTPException(500, str(e))
-
 @app.get("/challenges/", response_model=List[ChallengeOut])
 async def get_challenges():
-    """Get all challenges"""
+    """Get all challenges with category data"""
     try:
-        result = supabase.table("challenges").select("*").execute()
-        return result.data
+        # Query with category relationship
+        result = supabase.table("challenges").select("*, category:categories(*)").execute()
+        
+        # Transform response to match ChallengeOut model
+        challenges = []
+        for item in result.data:
+            challenges.append({
+                **item,
+                "category": item["category"] if item.get("category") else {}
+            })
+        
+        return challenges
     except Exception as e:
         raise HTTPException(500, str(e))
-
+    
+# Update submit endpoint
 @app.post("/challenges/{challenge_id}/submit")
 async def submit_challenge(
     challenge_id: str,
     submission: Submission,
     current_user: User = Depends(get_current_user)
 ):
-    """Submit challenge solution"""
     try:
         # Get challenge
         challenge = supabase.table("challenges").select("*").eq("id", challenge_id).execute()
         if not challenge.data:
             raise HTTPException(404, "Challenge not found")
 
-        # Validate submission (placeholder)
-        is_correct = True  # Actual validation would go here
-
-        # Update user progress
-        user_id = current_user.id
-        progress_data = {
-            "user_id": user_id,
+        # Execute code
+        result = execute_python_code(submission.code)
+        
+        # Store submission
+        submission_data = {
+            "user_id": current_user.id,
             "challenge_id": challenge_id,
-            "status": StatusEnum.completed if is_correct else StatusEnum.submitted,
+            "code": submission.code,
+            "language": submission.language,
+            "success": result["success"]
+        }
+        supabase.table("submissions").insert(submission_data).execute()
+
+        # Update progress
+        progress_data = {
+            "user_id": current_user.id,
+            "challenge_id": challenge_id,
+            "status": StatusEnum.completed if result["success"] else StatusEnum.submitted,
             "attempts": 1,
-            "completed_at": datetime.utcnow().isoformat() if is_correct else None
+            "completed_at": datetime.utcnow().isoformat() if result["success"] else None
         }
 
         existing = supabase.table("user_progress").select("*").match({
-            "user_id": user_id,
+            "user_id": current_user.id,
             "challenge_id": challenge_id
         }).execute()
 
         if existing.data:
             progress_data["attempts"] = existing.data[0]["attempts"] + 1
-            result = supabase.table("user_progress").update(progress_data).eq(
+            supabase.table("user_progress").update(progress_data).eq(
                 "id", existing.data[0]["id"]
             ).execute()
         else:
-            result = supabase.table("user_progress").insert(progress_data).execute()
+            supabase.table("user_progress").insert(progress_data).execute()
 
-        return {"success": is_correct, "attempts": progress_data["attempts"]}
+        return {
+            "success": result["success"],
+            "output": result.get("output"),
+            "error": result.get("error"),
+            "attempts": progress_data["attempts"]
+        }
     except Exception as e:
         raise HTTPException(500, str(e))
-
 @app.get("/progress/", response_model=List[UserProgressOut])
 async def get_progress(current_user: User = Depends(get_current_user)):
     """Get user progress"""
@@ -163,6 +185,8 @@ async def get_progress(current_user: User = Depends(get_current_user)):
 async def read_users_me(current_user: User = Depends(get_current_user)):
     """Get current user info"""
     return current_user
+
+
 
 if __name__ == "__main__":
     import uvicorn

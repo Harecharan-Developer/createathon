@@ -12,18 +12,42 @@ export default function Signup() {
   const { signup } = useAuth()
   const navigate = useNavigate()
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    try {
-      await signup(email, password)
-      navigate('/dashboard')
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
+// Update Signup component
+const handleSubmit = async (e) => {
+  e.preventDefault()
+  setLoading(true)
+  try {
+    const { error } = await signup(email, password)
+    if (error) throw error
+    
+    // Show verification message instead of redirecting
+    setVerificationSent(true)
+  } catch (err) {
+    setError(err.message)
+  } finally {
+    setLoading(false)
   }
+}
+
+// Add this state
+const [verificationSent, setVerificationSent] = useState(false)
+
+// Add this UI section before closing form div
+{verificationSent && (
+  <div className="p-4 bg-blue-50 rounded-md">
+    <p className="text-blue-700">
+      Verification email sent! Please check your inbox and confirm your email
+      before logging in.
+    </p>
+    <button
+      type="button"
+      onClick={() => navigate('/login')}
+      className="mt-2 text-blue-600 hover:text-blue-500"
+    >
+      Go to Login
+    </button>
+  </div>
+)}
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">

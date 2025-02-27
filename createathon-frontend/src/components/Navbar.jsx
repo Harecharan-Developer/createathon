@@ -1,25 +1,27 @@
 import { Link } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext';
 
-export default function Navbar({ isLoggedIn, setIsLoggedIn }) {
+export default function Navbar() {
+  const { user, logout } = useAuth()
+  
   return (
-    <nav className="bg-gray-800 text-white p-4">
+    <nav className="bg-gray-800 p-4">
       <div className="container mx-auto flex justify-between items-center">
-        <div className="flex space-x-4">
-          <Link to="/" className="hover:text-gray-300">Home</Link>
-          <Link to="/problem/1" className="hover:text-gray-300">Problems</Link>
+        <Link to="/" className="text-white text-xl font-bold">Createathon</Link>
+        <div className="space-x-4">
+          {user ? (
+            <>
+              <Link to="/dashboard" className="text-white">Dashboard</Link>
+              <Link to="/problems" className="text-white">Problems</Link>
+              <button onClick={logout} className="text-white">Logout</button>
+            </>
+          ) : (
+            <>
+              <Link to="/login" className="text-white">Login</Link>
+              <Link to="/signup" className="text-white">Signup</Link>
+            </>
+          )}
         </div>
-
-        {isLoggedIn ? (
-          <div className="flex space-x-4">
-            <Link to="/profile" className="hover:text-gray-300">Profile</Link>
-            <button onClick={() => setIsLoggedIn(false)} className="hover:text-gray-300">Logout</button>
-          </div>
-        ) : (
-          <div className="flex space-x-4">
-            <Link to="/login" className="hover:text-gray-300">Login</Link>
-            <Link to="/signup" className="hover:text-gray-300">Sign Up</Link>
-          </div>
-        )}
       </div>
     </nav>
   )
